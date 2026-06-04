@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login — CUEA Feedback</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body style="background: var(--primary);">
+
+<div class="page-wrapper narrow" style="margin-top:3rem;">
+    <div style="text-align:center; margin-bottom:2rem;">
+        <div style="width:56px;height:56px;background:var(--accent);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:1.8rem;margin-bottom:0.8rem;">🏛️</div>
+        <h2 style="color:var(--white); font-family:'Playfair Display',serif;">Admin Portal</h2>
+        <p style="color:rgba(255,255,255,0.7); margin:0;">CUEA Feedback Administration</p>
+    </div>
+
+    <div class="auth-card">
+        <div id="alert" style="display:none;"></div>
+
+        <div class="form-group">
+            <label for="email">Admin Email</label>
+            <input type="email" id="email" class="form-control" placeholder="admin@cuea.ac.ke">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="form-control" placeholder="Admin password">
+        </div>
+
+        <button class="btn btn-primary btn-full" id="loginBtn" onclick="login()">Login to Admin Panel</button>
+
+        <div style="text-align:center; margin-top:1.2rem;">
+            <a href="../index.html" style="font-size:0.88rem; color:var(--gray-600);">← Back to main site</a>
+        </div>
+
+        <div class="alert alert-info" style="margin-top:1.2rem; font-size:0.85rem;">
+            <div>Default credentials for demo:<br><strong>Email:</strong> admin@cuea.ac.ke<br><strong>Password:</strong> password</div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function login() {
+    const btn      = document.getElementById('loginBtn');
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    document.getElementById('alert').style.display = 'none';
+
+    if (!email || !password) {
+        showAlert('error', 'Please enter email and password.'); return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Logging in...';
+
+    try {
+        const res  = await fetch('../api/login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (data.success && data.user.role === 'admin') {
+            sessionStorage.setItem('user', JSON.stringify(data.user));
+            window.location.href = 'dashboard.html';
+        } else if (data.success && data.user.role !== 'admin') {
+            showAlert('error', 'This account does not have admin access.');
+            btn.disabled = false;
+            btn.textContent = 'Login to Admin Panel';
+        } else {
+            showAlert('error', data.error || 'Login failed.');
+            btn.disabled = false;
+            btn.textContent = 'Login to Admin Panel';
+        }
+    } catch (e) {
+        showAlert('error', 'Network error. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Login to Admin Panel';
+    }
+}
+
+function showAlert(type, msg) {
+    const alertBox = document.getElementById('alert');
+    alertBox.className = 'alert alert-' + type;
+    alertBox.textContent = msg;
+    alertBox.style.display = 'flex';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>

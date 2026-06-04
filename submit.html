@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Feedback — CUEA</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+        <div class="logo-icon">🎓</div>
+        <span>CUEA Feedback</span>
+    </a>
+    <ul class="navbar-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="submit.html" class="active">Submit Feedback</a></li>
+        <li><a href="login.html" id="nav-login">Login</a></li>
+        <li id="nav-register-li"><a href="register.html" class="btn-nav">Register</a></li>
+        <li id="nav-dashboard-li" style="display:none"><a href="dashboard.html">My Submissions</a></li>
+        <li id="nav-logout-li" style="display:none"><a href="api/logout.php">Logout</a></li>
+    </ul>
+</nav>
+
+<div class="page-wrapper narrow" style="margin-top:2rem;">
+
+    <!-- Success State -->
+    <div id="success-state" style="display:none;">
+        <div class="auth-card" style="text-align:center;">
+            <div style="font-size:3rem; margin-bottom:1rem;">✅</div>
+            <h2>Feedback Submitted!</h2>
+            <p>Thank you. Your feedback has been received by CUEA administration.</p>
+            <div class="ref-box">
+                <p style="font-size:0.82rem; margin-bottom:0.3rem;">Your Reference Number</p>
+                <div class="ref-num" id="ref-display"></div>
+                <p style="margin-top:0.4rem;">Save this number to follow up on your submission.</p>
+            </div>
+            <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; margin-top:1.5rem;">
+                <a href="submit.html" class="btn btn-outline">Submit Another</a>
+                <a href="dashboard.html" class="btn btn-primary" id="view-dashboard-btn" style="display:none;">View My Submissions</a>
+                <a href="index.html" class="btn btn-primary" id="go-home-btn">Go to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form State -->
+    <div id="form-state">
+        <div class="auth-card">
+            <h2>Submit Feedback</h2>
+            <p class="subtitle">Your feedback helps improve CUEA for everyone. You may submit anonymously or log in to track your submission.</p>
+
+            <div id="user-banner" style="display:none;" class="alert alert-info"></div>
+            <div id="alert" style="display:none;"></div>
+
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" class="form-control">
+                    <option value="">— Select a category —</option>
+                    <option value="1">Complaint</option>
+                    <option value="2">Suggestion</option>
+                    <option value="3">Grievance</option>
+                    <option value="4">General</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="subject">Subject</label>
+                <input type="text" id="subject" class="form-control" placeholder="Brief title for your feedback" maxlength="150">
+            </div>
+            <div class="form-group">
+                <label for="message">Message</label>
+                <textarea id="message" class="form-control" placeholder="Describe your feedback in detail (at least 20 characters)..." rows="6"></textarea>
+                <small style="color:var(--gray-400); font-size:0.8rem;" id="char-count">0 / 1000 characters</small>
+            </div>
+
+            <div id="anon-notice" class="alert alert-info" style="margin-bottom:1.2rem;">
+                ℹ️ You are submitting <strong>anonymously</strong>. <a href="login.html">Log in</a> to track your submission.
+            </div>
+
+            <button class="btn btn-primary btn-full" id="submitBtn" onclick="submitFeedback()">Submit Feedback</button>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <strong>CUEA Student Feedback Application</strong> &mdash; Catholic University of East Africa &mdash; 2026
+</footer>
+
+<script>
+let user = JSON.parse(sessionStorage.getItem('user') || 'null');
+
+window.addEventListener('DOMContentLoaded', async () => {
+    // Verify session is still valid with server
+    if (user) {
+        try {
+            const res = await fetch('api/my_feedback.php');
+            const data = await res.json();
+            if (!data.success) {
+                sessionStorage.removeItem('user');
+                user = null;
+            }
+        } catch(e) {
+            sessionStorage.removeItem('user');
+            user = null;
+        }
+    }
+
+    if (user) {
+        document.getElementById('anon-notice').style.display = 'none';
+        document.getElementById('user-banner').style.display = 'flex';
+        document.getElementById('user-banner').innerHTML = `✅ Logged in as <strong style="margin-left:4px;">${user.full_name}</strong>. Your submission will be tracked.`;
+        document.getElementById('nav-login').style.display = 'none';
+        document.getElementById('nav-register-li').style.display = 'none';
+        document.getElementById('nav-dashboard-li').style.display = 'block';
+        document.getElementById('nav-logout-li').style.display = 'block';
+    }
+
+    document.getElementById('message').addEventListener('input', function() {
+        document.getElementById('char-count').textContent = this.value.length + ' / 1000 characters';
+    });
+});
+
+async function submitFeedback() {
+    const btn        = document.getElementById('submitBtn');
+    const category_id= document.getElementById('category').value;
+    const subject    = document.getElementById('subject').value.trim();
+    const message    = document.getElementById('message').value.trim();
+
+    document.getElementById('alert').style.display = 'none';
+
+    if (!category_id) { showAlert('error', 'Please select a category.'); return; }
+    if (!subject)      { showAlert('error', 'Please enter a subject.'); return; }
+    if (message.length < 20) { showAlert('error', 'Message must be at least 20 characters.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+
+    try {
+        const res  = await fetch('api/submit.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category_id: parseInt(category_id), subject, message })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('form-state').style.display = 'none';
+            document.getElementById('success-state').style.display = 'block';
+            document.getElementById('ref-display').textContent = data.ref_no;
+            if (user) {
+                document.getElementById('view-dashboard-btn').style.display = 'inline-flex';
+                document.getElementById('go-home-btn').style.display = 'none';
+            }
+        } else {
+            showAlert('error', data.error || 'Submission failed. Please try again.');
+            btn.disabled = false;
+            btn.textContent = 'Submit Feedback';
+        }
+    } catch (e) {
+        showAlert('error', 'Network error. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Submit Feedback';
+    }
+}
+
+function showAlert(type, msg) {
+    const alertBox = document.getElementById('alert');
+    alertBox.className = 'alert alert-' + type;
+    alertBox.textContent = msg;
+    alertBox.style.display = 'flex';
+}
+</script>
+</body>
+</html>

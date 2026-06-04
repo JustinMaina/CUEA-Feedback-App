@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register — CUEA Feedback</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+        <div class="logo-icon">🎓</div>
+        <span>CUEA Feedback</span>
+    </a>
+    <ul class="navbar-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="submit.html">Submit Feedback</a></li>
+        <li><a href="login.html">Login</a></li>
+        <li><a href="register.html" class="btn-nav">Register</a></li>
+    </ul>
+</nav>
+
+<div class="page-wrapper narrow" style="margin-top:2rem;">
+    <div class="auth-card">
+        <h2>Create Account</h2>
+        <p class="subtitle">Register to track your feedback submissions and receive responses.</p>
+
+        <div id="alert" style="display:none;"></div>
+
+        <div class="form-group">
+            <label for="full_name">Full Name</label>
+            <input type="text" id="full_name" class="form-control" placeholder="e.g. Justin Maina Mwangi">
+        </div>
+        <div class="form-group">
+            <label for="student_id">Student ID</label>
+            <input type="text" id="student_id" class="form-control" placeholder="e.g. DIT/2023/001">
+        </div>
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" class="form-control" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="form-control" placeholder="At least 6 characters">
+        </div>
+        <div class="form-group">
+            <label for="confirm_password">Confirm Password</label>
+            <input type="password" id="confirm_password" class="form-control" placeholder="Repeat your password">
+        </div>
+
+        <button class="btn btn-primary btn-full" id="registerBtn" onclick="register()">Create Account</button>
+
+        <div class="divider">or</div>
+        <p style="text-align:center; font-size:0.9rem;">Already have an account? <a href="login.html">Login here</a></p>
+        <p style="text-align:center; font-size:0.88rem; margin-top:0.5rem;">
+            Want to submit without registering? <a href="submit.html">Anonymous submission →</a>
+        </p>
+    </div>
+</div>
+
+<footer>
+    <strong>CUEA Student Feedback Application</strong> &mdash; Catholic University of East Africa &mdash; 2026
+</footer>
+
+<script>
+async function register() {
+    const btn       = document.getElementById('registerBtn');
+    const alertBox  = document.getElementById('alert');
+    const full_name = document.getElementById('full_name').value.trim();
+    const student_id= document.getElementById('student_id').value.trim();
+    const email     = document.getElementById('email').value.trim();
+    const password  = document.getElementById('password').value;
+    const confirm   = document.getElementById('confirm_password').value;
+
+    alertBox.style.display = 'none';
+
+    if (!full_name || !student_id || !email || !password || !confirm) {
+        showAlert('error', 'Please fill in all fields.'); return;
+    }
+    if (password !== confirm) {
+        showAlert('error', 'Passwords do not match.'); return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Creating account...';
+
+    try {
+        const res  = await fetch('api/register.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ full_name, student_id, email, password })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAlert('success', 'Account created! Redirecting to login...');
+            setTimeout(() => window.location.href = 'login.html', 1500);
+        } else {
+            showAlert('error', data.error || 'Registration failed.');
+            btn.disabled = false;
+            btn.textContent = 'Create Account';
+        }
+    } catch (e) {
+        showAlert('error', 'Network error. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+    }
+}
+
+function showAlert(type, msg) {
+    const alertBox = document.getElementById('alert');
+    alertBox.className = 'alert alert-' + type;
+    alertBox.textContent = msg;
+    alertBox.style.display = 'flex';
+}
+</script>
+</body>
+</html>

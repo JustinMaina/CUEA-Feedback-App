@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — CUEA Feedback</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+        <div class="logo-icon">🎓</div>
+        <span>CUEA Feedback</span>
+    </a>
+    <ul class="navbar-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="submit.html">Submit Feedback</a></li>
+        <li><a href="login.html" class="active">Login</a></li>
+        <li><a href="register.html" class="btn-nav">Register</a></li>
+    </ul>
+</nav>
+
+<div class="page-wrapper narrow" style="margin-top:2rem;">
+    <div class="auth-card">
+        <h2>Welcome Back</h2>
+        <p class="subtitle">Log in to track your submissions and see responses from administration.</p>
+
+        <div id="alert" style="display:none;"></div>
+
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" class="form-control" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="form-control" placeholder="Your password">
+        </div>
+
+        <button class="btn btn-primary btn-full" id="loginBtn" onclick="login()">Login</button>
+
+        <div class="divider">or</div>
+        <p style="text-align:center; font-size:0.9rem;">Don't have an account? <a href="register.html">Register here</a></p>
+        <p style="text-align:center; font-size:0.88rem; margin-top:0.5rem;">
+            <a href="submit.html">Submit feedback anonymously →</a>
+        </p>
+    </div>
+</div>
+
+<footer>
+    <strong>CUEA Student Feedback Application</strong> &mdash; Catholic University of East Africa &mdash; 2026
+</footer>
+
+<script>
+async function login() {
+    const btn      = document.getElementById('loginBtn');
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    document.getElementById('alert').style.display = 'none';
+
+    if (!email || !password) {
+        showAlert('error', 'Please enter your email and password.'); return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Logging in...';
+
+    try {
+        const res  = await fetch('api/login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            // Store user info in sessionStorage for frontend use
+            sessionStorage.setItem('user', JSON.stringify(data.user));
+            showAlert('success', 'Login successful! Redirecting...');
+            setTimeout(() => {
+                if (data.user.role === 'admin') {
+                    window.location.href = 'admin/dashboard.html';
+                } else {
+                    window.location.href = 'dashboard.html';
+                }
+            }, 1000);
+        } else {
+            showAlert('error', data.error || 'Login failed.');
+            btn.disabled = false;
+            btn.textContent = 'Login';
+        }
+    } catch (e) {
+        showAlert('error', 'Network error. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Login';
+    }
+}
+
+function showAlert(type, msg) {
+    const alertBox = document.getElementById('alert');
+    alertBox.className = 'alert alert-' + type;
+    alertBox.textContent = msg;
+    alertBox.style.display = 'flex';
+}
+
+// Allow Enter key to submit
+document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>

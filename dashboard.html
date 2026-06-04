@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Submissions — CUEA Feedback</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .feedback-item {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            margin-bottom: 1rem;
+            overflow: hidden;
+            transition: box-shadow var(--transition);
+        }
+        .feedback-item:hover { box-shadow: var(--shadow); }
+        .feedback-item-header {
+            padding: 1rem 1.4rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid transparent;
+            transition: background var(--transition);
+        }
+        .feedback-item-header:hover { background: var(--gray-50); }
+        .feedback-item-header.open { border-bottom-color: var(--gray-200); background: var(--primary-light); }
+        .feedback-item-body { display: none; padding: 1.2rem 1.4rem; }
+        .feedback-item-body.open { display: block; }
+        .feedback-meta { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+        .feedback-meta .ref { font-size: 0.8rem; color: var(--gray-400); font-family: monospace; }
+        .response-box {
+            background: var(--accent-light);
+            border-left: 4px solid var(--accent);
+            border-radius: 0 var(--radius) var(--radius) 0;
+            padding: 1rem 1.2rem;
+            margin-top: 1rem;
+        }
+        .response-box strong { font-size: 0.85rem; color: var(--gray-800); display: block; margin-bottom: 0.4rem; }
+        .empty-state { text-align: center; padding: 3rem; color: var(--gray-600); }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+        <div class="logo-icon">🎓</div>
+        <span>CUEA Feedback</span>
+    </a>
+    <ul class="navbar-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="submit.html">Submit Feedback</a></li>
+        <li><a href="dashboard.html" class="active">My Submissions</a></li>
+        <li><a href="api/logout.php">Logout</a></li>
+    </ul>
+</nav>
+
+<div class="page-wrapper">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:2rem; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <h1 id="welcome-heading">My Submissions</h1>
+            <p style="margin:0;">Track your feedback and see responses from administration.</p>
+        </div>
+        <a href="submit.html" class="btn btn-primary">+ New Submission</a>
+    </div>
+
+    <div class="stats-row" id="stats-row">
+        <div class="stat-card"><div class="stat-num" id="stat-total">—</div><div class="stat-label">Total Submitted</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-pending">—</div><div class="stat-label">Pending Review</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-resolved">—</div><div class="stat-label">Resolved</div></div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Submission History</h3>
+        </div>
+        <div class="card-body" id="feedback-list">
+            <div class="empty-state">
+                <div class="icon">⏳</div>
+                <p>Loading your submissions...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <strong>CUEA Student Feedback Application</strong> &mdash; Catholic University of East Africa &mdash; 2026
+</footer>
+
+<script>
+const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+
+if (!user || user.role !== 'student') {
+    window.location.href = 'login.html';
+}
+
+document.getElementById('welcome-heading').textContent = `My Submissions`;
+
+function statusBadge(status) {
+    const map = {
+        'Submitted':    'badge-submitted',
+        'Under Review': 'badge-under-review',
+        'Resolved':     'badge-resolved',
+        'Closed':       'badge-closed',
+    };
+    return `<span class="badge ${map[status] || 'badge-submitted'}">${status}</span>`;
+}
+
+function formatDate(dt) {
+    return new Date(dt).toLocaleDateString('en-KE', { year:'numeric', month:'short', day:'numeric' });
+}
+
+async function loadFeedback() {
+    try {
+        const res  = await fetch('api/my_feedback.php');
+        const data = await res.json();
+
+        if (!data.success) {
+            document.getElementById('feedback-list').innerHTML =
+                `<div class="empty-state"><div class="icon">⚠️</div><p>${data.error}</p></div>`;
+            return;
+        }
+
+        const items = data.data;
+
+        // Stats
+        document.getElementById('stat-total').textContent    = items.length;
+        document.getElementById('stat-pending').textContent  = items.filter(i => i.status === 'Submitted' || i.status === 'Under Review').length;
+        document.getElementById('stat-resolved').textContent = items.filter(i => i.status === 'Resolved').length;
+
+        if (items.length === 0) {
+            document.getElementById('feedback-list').innerHTML = `
+                <div class="empty-state">
+                    <div class="icon">📭</div>
+                    <p>You haven't submitted any feedback yet.</p>
+                    <a href="submit.html" class="btn btn-primary" style="margin-top:1rem;">Submit Your First Feedback</a>
+                </div>`;
+            return;
+        }
+
+        document.getElementById('feedback-list').innerHTML = items.map((item, i) => `
+            <div class="feedback-item">
+                <div class="feedback-item-header" onclick="toggle(${i})">
+                    <div>
+                        <div class="feedback-meta">
+                            ${statusBadge(item.status)}
+                            <span style="font-size:0.82rem; background:var(--primary-light); color:var(--primary); padding:0.15rem 0.5rem; border-radius:4px; font-weight:600;">${item.category}</span>
+                            <span class="ref">${item.ref_no}</span>
+                        </div>
+                        <div style="font-weight:600; margin-top:0.4rem; color:var(--gray-800);">${item.subject}</div>
+                    </div>
+                    <div style="text-align:right; flex-shrink:0;">
+                        <div style="font-size:0.82rem; color:var(--gray-400);">${formatDate(item.submitted_at)}</div>
+                        <div style="font-size:0.82rem; color:var(--primary); margin-top:0.3rem;">${item.response ? '💬 Response available' : ''}</div>
+                    </div>
+                </div>
+                <div class="feedback-item-body" id="body-${i}">
+                    <p style="white-space:pre-wrap; color:var(--gray-800); margin:0 0 0.5rem;">${item.message}</p>
+                    ${item.response ? `
+                        <div class="response-box">
+                            <strong>🏛️ CUEA Administration Response <span style="color:var(--gray-400); font-weight:400;">— ${formatDate(item.responded_at)}</span></strong>
+                            <p style="margin:0; color:var(--gray-800);">${item.response}</p>
+                        </div>` : `<p style="color:var(--gray-400); font-size:0.88rem; margin:0;">No response yet. Administration will review your submission shortly.</p>`
+                    }
+                </div>
+            </div>
+        `).join('');
+
+    } catch (e) {
+        document.getElementById('feedback-list').innerHTML =
+            `<div class="empty-state"><div class="icon">⚠️</div><p>Failed to load submissions. Make sure you are running on XAMPP.</p></div>`;
+    }
+}
+
+function toggle(i) {
+    const header = document.querySelectorAll('.feedback-item-header')[i];
+    const body   = document.getElementById('body-' + i);
+    header.classList.toggle('open');
+    body.classList.toggle('open');
+}
+
+loadFeedback();
+</script>
+</body>
+</html>
