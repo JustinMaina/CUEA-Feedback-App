@@ -1,6 +1,5 @@
 <?php
 // db.php — Database connection
-// Place this file in the root of your cuea-feedback folder
 
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');       // Default XAMPP MySQL user
